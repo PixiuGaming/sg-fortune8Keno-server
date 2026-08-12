@@ -29,25 +29,23 @@ env:
 jobs:
   # ── 1. Test ────────────────────────────────────────────────────────────────
   test:
-    name: .NET Test
+    name: Java Test
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+      - name: Setup JDK
+        uses: actions/setup-java@v4
         with:
-          dotnet-version: '9.0.x'
-
-      - name: Restore dependencies
-        working-directory: ./Keno8Engine
-        run: dotnet restore
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'maven'          # switch to 'gradle' if you use Gradle
 
       - name: Run tests
-        working-directory: ./Keno8Engine
-        run: dotnet test --no-restore --verbosity normal
-        
+        working-directory: ./Keno8Engine   # ← point this at your Java module's root (where pom.xml lives)
+        run: mvn -B clean verify
+
   # ── 2. Build & Push ────────────────────────────────────────────────────────
   build-and-push:
     name: Build & Push
