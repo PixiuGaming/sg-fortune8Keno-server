@@ -43,7 +43,7 @@ jobs:
           cache: 'maven'          # switch to 'gradle' if you use Gradle
 
       - name: Run tests
-        working-directory: ./Keno8Engine   # ← point this at your Java module's root (where pom.xml lives)
+        working-directory: ./
         run: mvn -B clean verify
 
   # ── 2. Build & Push ────────────────────────────────────────────────────────
