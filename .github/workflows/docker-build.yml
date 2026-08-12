@@ -1,0 +1,203 @@
+name: Build & Push Docker Image
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    tags:
+      - 'v*.*.*'   # → versioned release
+  pull_request:
+    branches:
+      - main
+
+# Cancel any in-progress run on the same branch / tag to avoid queue buildup
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # ── Set these as GitHub Actions Variables (Settings → Variables) ──────────
+  # ECR_REPOSITORY  : e.g. keno8engine
+  # AWS_REGION      : e.g. eu-west-1
+  # AWS_ACCOUNT_ID  : e.g. 123456789012
+  # ── Set these as GitHub Actions Secrets (Settings → Secrets) ─────────────
+  # AWS_ROLE_TO_ASSUME : arn:aws:iam::<account>:role/<role-name>
+  ECR_REGISTRY: ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com
+  ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+
+jobs:
+  # ── 1. Test ────────────────────────────────────────────────────────────────
+  test:
+    name: .NET Test
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore dependencies
+        working-directory: ./Keno8Engine
+        run: dotnet restore
+
+      - name: Run tests
+        working-directory: ./Keno8Engine
+        run: dotnet test --no-restore --verbosity normal
+        
+  # ── 2. Build & Push ────────────────────────────────────────────────────────
+  build-and-push:
+    name: Build & Push
+    runs-on: ubuntu-24.04
+    needs: test                      # only runs if tests pass
+    permissions:
+      contents: read
+      id-token: write                # required for OIDC auth to AWS
+
+    steps:
+      # ── Checkout ────────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── Resolve environment name from branch / tag ───────────────────────────
+      # main / tag → production | staging → staging | develop → development
+      - name: Resolve environment
+        id: env
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/main" || "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "name=production" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == "refs/heads/staging" ]]; then
+            echo "name=staging" >> $GITHUB_OUTPUT
+          else
+            echo "name=development" >> $GITHUB_OUTPUT
+          fi
+
+      # ── Resolve build version ────────────────────────────────────────────────
+      # Semver tag push → version from tag  (v1.2.3 → 1.2.3)
+      # Branch push     → 1.0.<run_number>  (e.g. 1.0.42)
+      - name: Resolve build version
+        id: version
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION="1.0.${{ github.run_number }}"
+          fi
+          echo "value=$VERSION" >> $GITHUB_OUTPUT
+          echo "Resolved version: $VERSION"
+
+      # ── Docker Buildx ───────────────────────────────────────────────────────
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # ── Authenticate to AWS via OIDC (no long-lived keys) ───────────────────
+      - name: Configure AWS credentials
+        if: github.event_name != 'pull_request'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      # ── Ensure ECR repository exists ─────────────────────────────────────────
+      - name: Ensure ECR repository exists
+        if: github.event_name != 'pull_request'
+        run: |
+          aws ecr describe-repositories \
+            --repository-names "${{ env.ECR_REPOSITORY }}" \
+            --region "${{ vars.AWS_REGION }}" \
+          || aws ecr create-repository \
+            --repository-name "${{ env.ECR_REPOSITORY }}" \
+            --region "${{ vars.AWS_REGION }}" \
+            --image-scanning-configuration scanOnPush=true \
+            --encryption-configuration encryptionType=AES256
+
+      # ── Login to Amazon ECR ──────────────────────────────────────────────────
+      - name: Log in to Amazon ECR
+        if: github.event_name != 'pull_request'
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # ── Compute image tags ───────────────────────────────────────────────────
+      # Tags produced:
+      #   <ecr>/<repo>:production              ← environment
+      #   <ecr>/<repo>:production-1.0.42       ← environment + version
+      #   <ecr>/<repo>:1.0.42                  ← version only
+      #   <ecr>/<repo>:latest                  ← main / tag builds only
+      - name: Compute image tags
+        id: tags
+        env:
+          REGISTRY:  ${{ env.ECR_REGISTRY }}
+          REPO:      ${{ env.ECR_REPOSITORY }}
+          ENV:       ${{ steps.env.outputs.name }}
+          VERSION:   ${{ steps.version.outputs.value }}
+          IS_MAIN:   ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/') }}
+        run: |
+          BASE="${REGISTRY}/${REPO}"
+
+          TAGS="${BASE}:${ENV}"
+          TAGS="${TAGS},${BASE}:${ENV}-${VERSION}"
+          TAGS="${TAGS},${BASE}:${VERSION}"
+
+          if [[ "$IS_MAIN" == "true" ]]; then
+            TAGS="${TAGS},${BASE}:latest"
+          fi
+
+          echo "list=$TAGS" >> $GITHUB_OUTPUT
+
+          echo "Tags that will be applied:"
+          echo "$TAGS" | tr ',' '\n' | sed 's/^/  /'
+
+      # ── Build and push ───────────────────────────────────────────────────────
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.tags.outputs.list }}
+          labels: |
+            org.opencontainers.image.version=${{ steps.version.outputs.value }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
+            com.keno8engine.environment=${{ steps.env.outputs.name }}
+            com.keno8engine.build-number=${{ github.run_number }}
+          build-args: |
+            BUILD_VERSION=${{ steps.version.outputs.value }}
+            BUILD_NUMBER=${{ github.run_number }}
+            ENVIRONMENT=${{ steps.env.outputs.name }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+      # ── Vulnerability scan (Trivy) ───────────────────────────────────────────
+      # - name: Scan image for vulnerabilities
+      #   if: github.event_name != 'pull_request'
+      #   uses: aquasecurity/trivy-action@v0.36.0
+      #   with:
+      #     image-ref: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ steps.version.outputs.value }}
+      #     format: table
+      #     exit-code: '1'               # fail the build on CRITICAL findings
+      #     severity: CRITICAL,HIGH
+      #     ignore-unfixed: true
+
+      # ── Job summary ──────────────────────────────────────────────────────────
+      - name: Write job summary
+        if: github.event_name != 'pull_request'
+        run: |
+          echo "### Docker Image Published :whale:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Environment** | \`${{ steps.env.outputs.name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Version** | \`${{ steps.version.outputs.value }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Build #** | \`${{ github.run_number }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Commit** | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Registry** | \`${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Tags pushed:**" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.tags.outputs.list }}" | tr ',' '\n' >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
