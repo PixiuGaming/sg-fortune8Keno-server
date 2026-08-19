@@ -88,8 +88,8 @@ jobs:
           echo "Resolved version: $VERSION"
 
       # ── Docker Buildx ───────────────────────────────────────────────────────
-      #- name: Set up Docker Buildx
-      #  uses: docker/setup-buildx-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       #- name: Debug OIDC claims
       #  run: |
