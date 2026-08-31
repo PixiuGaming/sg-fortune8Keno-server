@@ -24,7 +24,7 @@ public class SpinGame {
 
     Random random = new Random();
 
-//    private final RngClient rngClient;
+    private final RngClient rngClient;
 
     private final GameEngineProperties properties;
 

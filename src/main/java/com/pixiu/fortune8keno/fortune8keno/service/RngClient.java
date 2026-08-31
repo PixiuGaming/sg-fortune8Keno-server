@@ -55,7 +55,7 @@ public class RngClient {
         }
 
         RngModels.RngResponse response = restTemplate.postForObject(
-                properties.getRngBaseUrl() + "/irgs/rng",
+                properties.getRngBaseUrl() ,
                 new RngModels.RngRequest(upperBounds),
                 RngModels.RngResponse.class);
 

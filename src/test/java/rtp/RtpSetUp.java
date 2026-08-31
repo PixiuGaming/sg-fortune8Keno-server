@@ -25,7 +25,7 @@ public class RtpSetUp {
         Random random = new Random();
         GameEngineProperties gameEngineProperties = new GameEngineProperties();
 //        RngClient rngClient = new RngClient();
-       SpinGame spinGame = new SpinGame( gameEngineProperties);
+       SpinGame spinGame = new SpinGame(null, gameEngineProperties);
         BaseGame baseGame = new BaseGame(spinGame);
         BaseCommand baseCommand = new BaseCommand(spinGameResponseMapper, baseGame);
         Command command = new Command(baseCommand);

@@ -19,7 +19,7 @@ public class KenoRTP {
     static int numberOfAvailableThreads = Runtime.getRuntime().availableProcessors();
     private static GamePlayService gamePlayService;
     //static int numberOfAvailableThreads = 1;
-    static int rounds = 1000_0000; // Number of rounds to simulate
+    static int rounds = 20_000_000; // Number of rounds to simulate
     static int finishedThreadCount = 0;
     static BigDecimal stakeValue = BigDecimal.ONE; // Assuming a fixed stake of 1 unit per round
 
@@ -60,7 +60,7 @@ public class KenoRTP {
         double totalWin = 0;
 
 
-        int rounds = 1000_0000; // Number of rounds to simulate
+        int rounds = 20_000_000; // Number of rounds to simulate
 
         int countWin = 0;
 
@@ -69,7 +69,7 @@ public class KenoRTP {
         for (int i = 0; i < rounds; i++) {
 
             PlayRequest playRequest = getBaseRequest(random);
-            SpinResult spinResult =  gamePlayService.play(playRequest, BigDecimal.valueOf(0.92));
+            SpinResult spinResult =  gamePlayService.play(playRequest, BigDecimal.valueOf(0.86));
 
 
             double winAmount = spinResult.getPrizeAmount();
