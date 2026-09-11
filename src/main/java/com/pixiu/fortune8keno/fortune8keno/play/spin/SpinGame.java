@@ -113,7 +113,7 @@ public class SpinGame {
 //        // the platform RNG (never generated locally).
 //    TODO     List<Integer> drawn = rngClient.drawUnique(properties.getPoolSize(), properties.getDrawCount());
 
-//        List<Integer> drawn = rngClient.drawUnique(properties.getPoolSize(), properties.getDrawCount());
+        List<Integer> drawn = rngClient.drawUnique(properties.getPoolSize(), properties.getDrawCount());
 
         int multiplier = 1; // Reset multiplier for each game;
         TreeSet<Integer> serverDrawnNumbers = getServerDrawnNumbers(random);

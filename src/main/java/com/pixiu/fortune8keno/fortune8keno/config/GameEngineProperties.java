@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 public class GameEngineProperties {
 
     /** Base URL of the platform, e.g. https://server.domain.com - RNG calls go to {base-url}/irgs/rng */
-    private String rngBaseUrl = "http://localhost:8080";
+    private String rngBaseUrl = "https://nach-supp.sgch.com/irgs/randomservice/rng";
 
     /** Total ball pool, e.g. 80 for classic 80-ball Keno. */
     private int poolSize = 80;
