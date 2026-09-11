@@ -5,9 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="bfd1d467-7362-43f7-b085-9315f55a859d" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/pixiu/fortune8keno/fortune8keno/config/GameEngineProperties.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/pixiu/fortune8keno/fortune8keno/config/GameEngineProperties.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/pixiu/fortune8keno/fortune8keno/play/spin/SpinGame.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/pixiu/fortune8keno/fortune8keno/play/spin/SpinGame.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/pixiu/fortune8keno/fortune8keno/game/GameController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/pixiu/fortune8keno/fortune8keno/game/GameController.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -49,7 +49,7 @@
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
-    "Application.Fortune8kenoApplication.executor": "Debug",
+    "Application.Fortune8kenoApplication.executor": "Run",
     "Application.KenoRTP.executor": "Run",
     "Maven.fortune8keno [clean].executor": "Run",
     "Maven.fortune8keno [install].executor": "Run",

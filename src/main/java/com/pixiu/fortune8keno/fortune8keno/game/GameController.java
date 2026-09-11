@@ -25,6 +25,13 @@ public class GameController {
         return gamePlayService.play(playRequest, rtpVariant);
     }
 
+    @GetMapping("fortune8Keno/version")
+    public String getServerVersion(@RequestHeader(value = "X-Trace-ID", required = false) String traceId,
+                           @RequestHeader(value = "X-Rtp-Variant", required = false) BigDecimal rtpVariant,
+                           @RequestBody PlayRequest playRequest) {
+        return "version 0.0.1";
+    }
+
 
 
 
